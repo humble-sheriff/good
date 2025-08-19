@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cute Cat Generator 😻</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg, #fff7fb);
+      color: var(--text, #000);
+      text-align: center;
+      padding: 40px;
+      transition: all 0.3s ease;
+    }
+    h1 {
+      color: #ff66aa;
+    }
+    button {
+      background: #ff66aa;
+      color: white;
+      padding: 10px 16px;
+      margin: 6px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #ff3388;
+    }
+    img {
+      margin-top: 20px;
+      max-width: 80%;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    #gallery {
+      margin-top: 40px;
+    }
+    .gallery-img {
+      width: 150px;
+      margin: 8px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+    .dark {
+      --bg: #121212;
+      --text: #eee;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐱 Cute Cat Generator 🐾</h1>
+
+  <!-- Auth -->
+  <div id="auth">
+    <button onclick="login()">🔑 Login with Google</button>
+    <button onclick="logout()">🚪 Logout</button>
+  </div>
+  <p id="userInfo"></p>
+
+  <!-- Main Buttons -->
+  <button onclick="generateCat()">New Cat 😻</button>
+  <button onclick="downloadCat()">Download ⬇️</button>
+  <button onclick="likeCat()">❤️ Like</button>
+  <button onclick="toggleSurprise()">🎲 Surprise Mode</button>
+  <button onclick="toggleAuto()">⏳ Auto Refresh</button>
+  <button onclick="clearLiked()">🗑️ Clear Liked</button>
+  <button onclick="toggleDark()">🌙 Dark Mode</button>
+
+  <!-- Display Area -->
+  <div>
+    <img id="catImage" src="" alt="Your cat will appear here!">
+  </div>
+
+  <!-- Liked Gallery -->
+  <div id="gallery">
+    <h2>❤️ Your Liked Cats</h2>
+    <div id="likedCats"></div>
+  </div>
+
+  <!-- Global Leaderboard -->
+  <div id="leaderboard">
+    <h2>🏆 Top Cats</h2>
+    <ul id="topCats"></ul>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    // ✅ Firebase config
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDocs, collection, query, orderBy, limit, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBHJjK4dzR3sTWNJbPaoog2MJk_85a3MYo",
+      authDomain: "cute-cat-generator-98df9.firebaseapp.com",
+      projectId: "cute-cat-generator-98df9",
+      storageBucket: "cute-cat-generator-98df9.firebasestorage.app",
+      messagingSenderId: "40103362960",
+      appId: "1:40103362960:web:5a7f338746de06bf04b315"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+    const db = getFirestore(app);
+
+    let user = null;
+    let currentCatUrl = "";
+    let surpriseMode = false;
+    let autoRefresh = null;
+
+    // =============================
+    // AUTH
+    // =============================
+    async function login() {
+      try {
+        const res = await signInWithPopup(auth, provider);
+        user = res.user;
+        document.getElementById("userInfo").innerText = `Logged in as ${user.displayName}`;
+      } catch (e) { console.error(e); }
+    }
+
+    async function logout() {
+      await signOut(auth);
+      user = null;
+      document.getElementById("userInfo").innerText = "Logged out.";
+    }
+
+    // =============================
+    // CAT GENERATOR
+    // =============================
+    async function generateCat() {
+      const imgElement = document.getElementById("catImage");
+      imgElement.alt = "⏳ Fetching...";
+
+      // 🎲 Surprise mode
+      if (surpriseMode && Math.random() < 0.3) {
+        const funnyCats = [
+          "https://i.imgur.com/JqEuJ6t.jpeg",
+          "https://i.imgur.com/n8OYCzR.gif",
+          "https://i.imgur.com/z4d4kWk.jpeg",
+          "https://i.imgur.com/R2rSdj9.jpeg",
+        ];
+        currentCatUrl = funnyCats[Math.floor(Math.random() * funnyCats.length)];
+        imgElement.src = currentCatUrl;
+        imgElement.alt = "🎲 Surprise!";
+        return;
+      }
+
+      // Fallback: use TheCatAPI
+      try {
+        const fallbackRes = await fetch("https://api.thecatapi.com/v1/images/search");
+        const fallbackData = await fallbackRes.json();
+        currentCatUrl = fallbackData[0].url;
+        imgElement.src = currentCatUrl;
+        imgElement.alt = "Cute cat!";
+      } catch (e) {
+        imgElement.alt = "❌ Could not load cat.";
+      }
+    }
+
+    // ✅ Download
+    async function downloadCat() {
+      if (!currentCatUrl) return alert("No cat yet! Generate one first 😺");
+      const res = await fetch(currentCatUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "cute-cat.jpg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // ❤️ Like + Save to Firestore
+    async function likeCat() {
+      if (!currentCatUrl || !user) return alert("Login and generate a cat first 😺");
+      const likedCats = document.getElementById("likedCats");
+      const img = document.createElement("img");
+      img.src = currentCatUrl;
+      img.className = "gallery-img";
+      likedCats.appendChild(img);
+
+      // Save to Firestore
+      const catRef = doc(db, "cats", currentCatUrl.replace(/[^\w]/g, ""));
+      await setDoc(catRef, { url: currentCatUrl, likes: increment(1) }, { merge: true });
+      loadTopCats();
+    }
+
+    // 🗑️ Clear liked gallery (local only)
+    function clearLiked() {
+      document.getElementById("likedCats").innerHTML = "";
+    }
+
+    // 🎲 Surprise mode toggle
+    function toggleSurprise() {
+      surpriseMode = !surpriseMode;
+      alert("🎲 Surprise mode " + (surpriseMode ? "ON" : "OFF"));
+    }
+
+    // ⏳ Auto refresh toggle
+    function toggleAuto() {
+      if (autoRefresh) {
+        clearInterval(autoRefresh);
+        autoRefresh = null;
+        alert("⏳ Auto refresh OFF");
+      } else {
+        autoRefresh = setInterval(generateCat, 10000);
+        alert("⏳ Auto refresh ON (every 10s)");
+      }
+    }
+
+    // 🌙 Dark mode
+    function toggleDark() {
+      document.body.classList.toggle("dark");
+    }
+
+    // 🏆 Load top cats
+    async function loadTopCats() {
+      const q = query(collection(db, "cats"), orderBy("likes", "desc"), limit(5));
+      const docs = await getDocs(q);
+      const list = document.getElementById("topCats");
+      list.innerHTML = "";
+      docs.forEach(docSnap => {
+        const li = document.createElement("li");
+        li.innerHTML = `<img src="${docSnap.data().url}" class="gallery-img"> ❤️ ${docSnap.data().likes || 0}`;
+        list.appendChild(li);
+      });
+    }
+
+    // Initial load
+    window.onload = () => {
+      generateCat();
+      loadTopCats();
+    }
+
+    // Expose functions to window
+    window.login = login;
+    window.logout = logout;
+    window.generateCat = generateCat;
+    window.downloadCat = downloadCat;
+    window.likeCat = likeCat;
+    window.clearLiked = clearLiked;
+    window.toggleSurprise = toggleSurprise;
+    window.toggleAuto = toggleAuto;
+    window.toggleDark = toggleDark;
+  </script>
+</body>
+</html>
