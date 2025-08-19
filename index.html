@@ -10,6 +10,11 @@
       background: #fff7fb;
       text-align: center;
       padding: 40px;
+      transition: background 0.4s, color 0.4s;
+    }
+    body.dark {
+      background: #1e1e1e;
+      color: #eee;
     }
     h1 {
       color: #ff66aa;
@@ -43,19 +48,30 @@
       border-radius: 10px;
       box-shadow: 0 3px 8px rgba(0,0,0,0.15);
     }
+    #quote, #fact {
+      margin-top: 15px;
+      font-style: italic;
+      color: #555;
+    }
+    body.dark #quote, body.dark #fact {
+      color: #ddd;
+    }
   </style>
 </head>
 <body>
   <h1>🐱 Cute Cat Generator 🐾</h1>
   <button onclick="generateCat()">New Cat 😻</button>
-  <button onclick="downloadCat()">Download ⬇️</button>
   <button onclick="likeCat()">❤️ Like</button>
   <button onclick="toggleSurprise()">🎲 Surprise Mode</button>
   <button onclick="toggleAuto()">⏳ Auto Refresh</button>
   <button onclick="clearLiked()">🗑️ Clear Liked</button>
+  <button onclick="shuffleLiked()">🔀 Shuffle Liked</button>
+  <button onclick="toggleDarkMode()">🌙 Dark/Light</button>
 
   <div>
     <img id="catImage" src="" alt="Your cat will appear here!">
+    <p id="quote"></p>
+    <p id="fact"></p>
   </div>
 
   <div id="gallery">
@@ -79,20 +95,49 @@
 
     async function generateCat() {
       const imgElement = document.getElementById("catImage");
+      const quoteElement = document.getElementById("quote");
+      const factElement = document.getElementById("fact");
       imgElement.alt = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
       currentCatUrl = "";
+      quoteElement.textContent = "";
+      factElement.textContent = "";
 
-      // 🎲 Surprise mode
+      // 🎲 Surprise mode expansion
       if (surpriseMode && Math.random() < 0.3) {
-        const funnyCats = [
-          "https://i.imgur.com/JqEuJ6t.jpeg", // cat meme
-          "https://i.imgur.com/n8OYCzR.gif",  // funny cat gif
-          "https://i.imgur.com/z4d4kWk.jpeg", // grumpy cat
-          "https://i.imgur.com/R2rSdj9.jpeg", // cute puppy
+        const funnyStuff = [
+          // 🐱 Cat memes & pics
+          "https://i.imgur.com/JqEuJ6t.jpeg",
+          "https://i.imgur.com/z4d4kWk.jpeg",
+          "https://i.imgur.com/mE3n3aI.jpeg",
+          "https://i.imgur.com/1X5cD8M.jpeg",
+
+          // 🐶 Funny dogs
+          "https://i.imgur.com/fvVZq0T.jpeg",
+          "https://i.imgur.com/ajL6A7P.jpeg",
+
+          // 🎞️ Cat GIFs
+          "https://i.imgur.com/n8OYCzR.gif",
+          "https://i.imgur.com/5R6P2MZ.gif",
+          "https://i.imgur.com/jSB3cTG.gif",
+
+          // 💬 Cute/funny quotes
+          "QUOTE::😺 'Time spent with cats is never wasted.'",
+          "QUOTE::🐾 'In ancient times cats were worshipped as gods; they have not forgotten this.'",
+          "QUOTE::😹 'Dogs have owners, cats have staff.'"
         ];
-        currentCatUrl = funnyCats[Math.floor(Math.random() * funnyCats.length)];
-        imgElement.src = currentCatUrl;
-        imgElement.alt = "🎲 Surprise!";
+
+        const choice = funnyStuff[Math.floor(Math.random() * funnyStuff.length)];
+
+        if (choice.startsWith("QUOTE::")) {
+          imgElement.src = "";
+          imgElement.style.display = "none";
+          quoteElement.textContent = choice.replace("QUOTE::", "");
+        } else {
+          currentCatUrl = choice;
+          imgElement.src = choice;
+          imgElement.alt = "🎲 Surprise!";
+          imgElement.style.display = "block";
+        }
         return;
       }
 
@@ -116,6 +161,7 @@
           currentCatUrl = urlMatch[0];
           imgElement.src = currentCatUrl;
           imgElement.alt = "Cute cat!";
+          fetchFact();
           return;
         }
       } catch (e) {
@@ -129,29 +175,20 @@
         currentCatUrl = fallbackData[0].url;
         imgElement.src = currentCatUrl;
         imgElement.alt = "Cute fallback cat!";
+        fetchFact();
       } catch (e) {
         imgElement.alt = "❌ Could not load cat.";
       }
     }
 
-    // ✅ Proper download using blob
-    async function downloadCat() {
-      if (!currentCatUrl) return alert("No cat yet! Generate one first 😺");
+    // 🐾 Fetch random cat fact
+    async function fetchFact() {
       try {
-        const res = await fetch(currentCatUrl);
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "cute-cat.jpg";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        alert("❌ Failed to download cat.");
+        const res = await fetch("https://catfact.ninja/fact");
+        const data = await res.json();
+        document.getElementById("fact").textContent = "📘 " + data.fact;
+      } catch {
+        document.getElementById("fact").textContent = "";
       }
     }
 
@@ -170,22 +207,35 @@
       document.getElementById("likedCats").innerHTML = "";
     }
 
+    // 🔀 Shuffle liked cats
+    function shuffleLiked() {
+      const likedCatsDiv = document.getElementById("likedCats");
+      const imgs = Array.from(likedCatsDiv.children);
+      likedCatsDiv.innerHTML = "";
+      imgs.sort(() => Math.random() - 0.5).forEach(img => likedCatsDiv.appendChild(img));
+    }
+
     // 🎲 Toggle surprise mode
     function toggleSurprise() {
       surpriseMode = !surpriseMode;
       alert("🎲 Surprise mode " + (surpriseMode ? "ON" : "OFF"));
     }
 
-    // ⏳ Auto refresh every 10s
+    // ⏳ Auto refresh every 3s
     function toggleAuto() {
       if (autoRefresh) {
         clearInterval(autoRefresh);
         autoRefresh = null;
         alert("⏳ Auto refresh OFF");
       } else {
-        autoRefresh = setInterval(generateCat, 10000);
-        alert("⏳ Auto refresh ON (every 10s)");
+        autoRefresh = setInterval(generateCat, 3000);
+        alert("⏳ Auto refresh ON (every 3s)");
       }
+    }
+
+    // 🌙 Dark/light mode
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark");
     }
 
     // Load one cat at start
